@@ -46,6 +46,12 @@ std::vector<Group> groups;
 std::vector<String> bannedIps;
 
 const unsigned long ONLINE_TIMEOUT_MS = 15000;
+#define UPDATE_ONLINE(u) do { \
+  unsigned long now = millis(); \
+  if ((u).online && (now - (u).lastActiveMs) > ONLINE_TIMEOUT_MS) { \
+    (u).online = false; \
+  } \
+} while (0)
 
 // -------------------- Helpers --------------------
 String htmlEscape(const String &s) {
@@ -77,13 +83,6 @@ bool ipBanned(const String &ip) {
     if (bannedIps[i] == ip) return true;
   }
   return false;
-}
-
-void updateOnline(User &u) {
-  unsigned long now = millis();
-  if (u.online && (now - u.lastActiveMs) > ONLINE_TIMEOUT_MS) {
-    u.online = false;
-  }
 }
 
 bool userBlocks(const User &u, const String &other) {
@@ -904,7 +903,7 @@ void handleUsers() {
   String out = "{\"users\":[";
   bool first = true;
   for (size_t i = 0; i < users.size(); i++) {
-    updateOnline(users[i]);
+    UPDATE_ONLINE(users[i]);
     if (viewer.length() > 0 && viewer != users[i].name) {
       if (isBlockedPair(viewer, users[i].name)) continue;
     }
@@ -1124,7 +1123,7 @@ void handleAdminUsers() {
   }
   String out = "{\"ok\":true,\"users\":[";
   for (size_t i = 0; i < users.size(); i++) {
-    updateOnline(users[i]);
+    UPDATE_ONLINE(users[i]);
     unsigned long lastSec = (millis() - users[i].lastActiveMs) / 1000;
     out += "{\"name\":\"" + htmlEscape(users[i].name) + "\",\"pass\":\"" + htmlEscape(users[i].pass) + "\",\"ip\":\"" + users[i].ip + "\",\"online\":" + String(users[i].online ? "true" : "false") + ",\"last\":" + String(lastSec) + ",\"device\":\"" + htmlEscape(users[i].device) + "\"}";
     if (i + 1 < users.size()) out += ",";
