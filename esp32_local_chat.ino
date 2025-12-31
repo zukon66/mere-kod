@@ -93,9 +93,56 @@ body{
   background-color:#d1d7db;
   margin:0;
   height:100vh;
+  overflow:hidden;
 }
-#main{
+.screen{
+  display:none;
   height:100vh;
+  width:100vw;
+}
+.screen.active{display:flex}
+#screen-login{
+  flex-direction:column;
+  background:#d1d7db;
+}
+.login-header{
+  background:#008069;
+  color:#ffffff;
+  padding:15px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.login-title{
+  font-size:18px;
+  font-weight:bold;
+}
+.status-pill{
+  font-size:12px;
+  font-weight:bold;
+}
+.logout-btn{
+  background:#d32f2f;
+  color:#ffffff;
+}
+.login-wrap{
+  flex:1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:16px;
+}
+.login-box{
+  width:95%;
+  max-width:520px;
+  background:#ffffff;
+  border:1px solid #eee;
+  border-radius:10px;
+  padding:16px;
+}
+#screen-app{flex-direction:column}
+#main{
+  height:100%;
   width:100vw;
   display:flex;
 }
@@ -263,82 +310,93 @@ button{
 </style>
 </head>
 <body>
-<div id="main">
-  <div class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">ESP Chat</div>
-      <div id="status">Disconnected</div>
-    </div>
-    <div class="sidebar-body">
-      <div class="card">
-        <div class="section-title">Giris</div>
-        <div id="login">
-          <input id="loginUser" placeholder="Rumuz">
-          <input id="loginPass" type="password" placeholder="Sifre">
-          <button onclick="login()">GIRIS YAP</button>
-        </div>
-        <div class="section-title" style="margin-top:10px;">Kayit</div>
-        <div id="register">
-          <input id="regUser" placeholder="Rumuz">
-          <input id="regPass" type="password" placeholder="Sifre">
-          <button onclick="registerUser()">KAYIT OL</button>
-        </div>
+<div id="screen-login" class="screen active">
+  <div class="login-header">
+    <div class="login-title">ESP Chat</div>
+    <div id="statusLogin" class="status-pill">Disconnected</div>
+  </div>
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="section-title">Giris</div>
+      <div id="login">
+        <input id="loginUser" placeholder="Rumuz">
+        <input id="loginPass" type="password" placeholder="Sifre">
+        <button onclick="login()">GIRIS YAP</button>
       </div>
-
-      <input class="search" placeholder="Ara...">
-
-      <div>
-        <div class="section-title">Kullanicilar</div>
-        <div id="users" class="list"></div>
-      </div>
-
-      <div>
-        <div class="section-title">Gruplar</div>
-        <div id="groups" class="list"></div>
-      </div>
-
-      <div id="groupCreate" class="card">
-        <div class="section-title">Yeni Grup</div>
-        <input id="newGroupName" placeholder="Grup Ismi">
-        <input id="newGroupMembers" placeholder="Uyeler (virgul)">
-        <button onclick="createGroup()">OLUSTUR</button>
-      </div>
-
-      <div id="adminPanel" class="card">
-        <div class="section-title">Admin Paneli</div>
-        <div class="card" style="margin-bottom:8px;">
-          <div class="section-title">AP Ayarlari</div>
-          <input id="apSsid" placeholder="AP SSID">
-          <input id="apPass" placeholder="AP Sifre">
-          <button onclick="saveAp()">Kaydet ve Yeniden Baslat</button>
-        </div>
-        <div class="card" style="margin-bottom:8px;">
-          <div class="section-title">Wi-Fi Baglanti</div>
-          <button onclick="scanWifi()">Ag Tara & Baglan</button>
-          <select id="wifiList"></select>
-          <input id="wifiPass" placeholder="Secilen ag sifresi">
-          <button onclick="connectWifi()">Baglan</button>
-        </div>
-        <div class="card">
-          <div class="section-title">Kullanicilar</div>
-          <table>
-            <thead><tr><th>Rumuz</th><th>Sifre</th><th>IP</th></tr></thead>
-            <tbody id="adminUsers"></tbody>
-          </table>
-        </div>
+      <div class="section-title" style="margin-top:10px;">Kayit</div>
+      <div id="register">
+        <input id="regUser" placeholder="Rumuz">
+        <input id="regPass" type="password" placeholder="Sifre">
+        <button onclick="registerUser()">KAYIT OL</button>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="chat">
-    <div class="chat-header">
-      <div class="chat-title">Sohbet</div>
-      <div id="targetInfo" class="chat-sub">Hedef: -</div>
+<div id="screen-app" class="screen">
+  <div id="main">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">ESP Chat</div>
+        <div id="status">Disconnected</div>
+      </div>
+      <div class="sidebar-body">
+        <input class="search" placeholder="Ara...">
+
+        <div>
+          <div class="section-title">Kullanicilar</div>
+          <div id="users" class="list"></div>
+        </div>
+
+        <div>
+          <div class="section-title">Gruplar</div>
+          <div id="groups" class="list"></div>
+        </div>
+
+        <div id="groupCreate" class="card">
+          <div class="section-title">Yeni Grup</div>
+          <input id="newGroupName" placeholder="Grup Ismi">
+          <input id="newGroupMembers" placeholder="Uyeler (virgul)">
+          <button onclick="createGroup()">OLUSTUR</button>
+        </div>
+
+        <div id="adminPanel" class="card">
+          <div class="section-title">Admin Paneli</div>
+          <div class="card" style="margin-bottom:8px;">
+            <div class="section-title">AP Ayarlari</div>
+            <input id="apSsid" placeholder="AP SSID">
+            <input id="apPass" placeholder="AP Sifre">
+            <button onclick="saveAp()">Kaydet ve Yeniden Baslat</button>
+          </div>
+          <div class="card" style="margin-bottom:8px;">
+            <div class="section-title">Wi-Fi Baglanti</div>
+            <button onclick="scanWifi()">Ag Tara & Baglan</button>
+            <select id="wifiList"></select>
+            <input id="wifiPass" placeholder="Secilen ag sifresi">
+            <button onclick="connectWifi()">Baglan</button>
+          </div>
+          <div class="card">
+            <div class="section-title">Kullanicilar</div>
+            <table>
+              <thead><tr><th>Rumuz</th><th>Sifre</th><th>IP</th></tr></thead>
+              <tbody id="adminUsers"></tbody>
+            </table>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">CIKIS</button>
+      </div>
     </div>
-    <div id="messages"></div>
-    <div id="composer">
-      <input id="msgText" placeholder="Mesaj...">
-      <button onclick="sendMsg()">></button>
+
+    <div class="chat">
+      <div class="chat-header">
+        <div class="chat-title">Sohbet</div>
+        <div id="targetInfo" class="chat-sub">Hedef: -</div>
+      </div>
+      <div id="messages"></div>
+      <div id="composer">
+        <input id="msgText" placeholder="Mesaj...">
+        <button onclick="sendMsg()">></button>
+      </div>
     </div>
   </div>
 </div>
@@ -349,7 +407,26 @@ let currentPass = "";
 let currentTarget = "";
 let currentTargetIsGroup = false;
 
-function setStatus(t){document.getElementById("status").innerText=t;}
+function setStatus(t){
+  const s=document.getElementById("status");
+  if(s) s.innerText=t;
+  const sl=document.getElementById("statusLogin");
+  if(sl) sl.innerText=t;
+}
+function showScreen(id){
+  document.getElementById("screen-login").classList.remove("active");
+  document.getElementById("screen-app").classList.remove("active");
+  document.getElementById(id).classList.add("active");
+}
+function logout(){
+  currentUser="";
+  currentPass="";
+  currentTarget="";
+  currentTargetIsGroup=false;
+  setStatus("Disconnected");
+  document.getElementById("adminPanel").style.display="none";
+  showScreen("screen-login");
+}
 
 function login(){
   const u=document.getElementById("loginUser").value.trim();
@@ -362,6 +439,7 @@ function login(){
       setStatus("Online: "+u);
       document.getElementById("adminPanel").style.display = j.admin ? "block" : "none";
       refreshAll();
+      showScreen("screen-app");
     }else alert("Giris basarisiz");
   });
 }
@@ -529,6 +607,7 @@ function connectWifi(){
 }
 
 setInterval(()=>{ if(currentUser){ refreshAll(); loadMessages(); } }, 3000);
+showScreen("screen-login");
 </script>
 </body>
 </html>
