@@ -88,108 +88,171 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <title>ESP32 Local Chat</title>
 <style>
 :root{
-  --bg:#121212;
-  --panel:#1f1f1f;
-  --panel2:#2c2c2c;
-  --accent:#b0e0e6;
-  --text:#eaeaea;
-  --muted:#b0b0b0;
-  --green:#00c853;
-  --gray:#666;
+  --bg:#0b141a;
+  --panel:#111b21;
+  --panel2:#1f2c33;
+  --accent:#00a884;
+  --accent-soft:#0b5e4a;
+  --text:#e9edef;
+  --muted:#8696a0;
+  --green:#25d366;
+  --gray:#3c4a52;
 }
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family: "Trebuchet MS", Arial, sans-serif;
-  background:var(--bg);
+  font-family: "Trebuchet MS", Tahoma, sans-serif;
+  background:radial-gradient(circle at 10% 10%, #0f1a21 0, #0b141a 55%, #0a1217 100%);
   color:var(--text);
 }
 header{
-  padding:14px 16px;
-  background:linear-gradient(135deg, #1b1b1b, #111);
-  border-bottom:1px solid #222;
+  padding:12px 16px;
+  background:linear-gradient(135deg, #111b21, #0f1a20);
+  border-bottom:1px solid #1f2a30;
   display:flex;
   align-items:center;
   justify-content:space-between;
 }
-header h1{font-size:18px;margin:0;color:var(--accent)}
+header h1{font-size:18px;margin:0;color:var(--text);letter-spacing:0.3px}
+#status{
+  font-size:12px;
+  color:#0b141a;
+  background:var(--accent);
+  padding:6px 10px;
+  border-radius:999px;
+}
 #main{
   display:flex;
   flex-direction:row;
-  gap:12px;
-  padding:12px;
+  gap:10px;
+  padding:10px;
+  min-height:calc(100vh - 56px);
 }
 .panel{
   background:var(--panel);
-  border:1px solid #222;
-  border-radius:10px;
+  border:1px solid #1f2a30;
+  border-radius:12px;
   padding:10px;
 }
 #left{
-  width:260px;
-  min-width:220px;
+  width:300px;
+  min-width:240px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
 #chat{
   flex:1;
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:0;
+  padding:0;
+  overflow:hidden;
 }
-#users .user{
-  padding:6px 8px;
-  border-bottom:1px solid #222;
+.sidebar-header{
   display:flex;
   align-items:center;
-  gap:8px;
-  cursor:pointer;
+  justify-content:space-between;
+  padding:4px 4px 6px 4px;
 }
+.brand{
+  font-weight:bold;
+  color:var(--text);
+  letter-spacing:0.4px;
+}
+.search{
+  background:#0f191f;
+  border:1px solid #1f2a30;
+  color:var(--text);
+  padding:8px 10px;
+  border-radius:8px;
+  width:100%;
+}
+.list{
+  background:var(--panel);
+  border:1px solid #1f2a30;
+  border-radius:10px;
+  overflow:hidden;
+  max-height:260px;
+  overflow:auto;
+}
+.user{
+  padding:8px 10px;
+  border-bottom:1px solid #1f2a30;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  transition:background 0.2s ease;
+}
+.user:hover{background:#0f191f}
+.avatar{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:#2a3942;
+  color:#cfd8dc;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+}
+.user-meta{flex:1; min-width:0}
+.user-name{font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.user-sub{font-size:12px; color:var(--muted)}
 .dot{
   width:8px;height:8px;border-radius:50%;
   background:var(--gray);
 }
 .dot.online{background:var(--green)}
 #messages{
-  height:360px;
+  height:420px;
   overflow:auto;
-  background:var(--panel2);
-  border-radius:8px;
-  padding:8px;
-  border:1px solid #222;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 0, rgba(255,255,255,0) 35%),
+    linear-gradient(180deg, #0b141a 0%, #0b141a 100%);
+  padding:14px;
+  border-top:1px solid #1f2a30;
+  border-bottom:1px solid #1f2a30;
 }
 .msg{
   margin:6px 0;
-  padding:8px 10px;
-  border-radius:10px;
+  padding:8px 12px;
+  border-radius:10px 10px 10px 4px;
   max-width:80%;
   font-size:14px;
+  line-height:1.4;
 }
-.msg.me{background:var(--accent); color:#101010; margin-left:auto}
-.msg.other{background:#1b1b1b; color:var(--text)}
+.msg.me{background:var(--accent); color:#08130f; margin-left:auto; border-radius:10px 10px 4px 10px}
+.msg.other{background:#202c33; color:var(--text)}
 #composer{
   display:flex;
-  gap:6px;
+  gap:8px;
+  padding:10px;
+  background:var(--panel);
 }
 input, select, button{
-  background:#1b1b1b;
-  border:1px solid #333;
+  background:#0f191f;
+  border:1px solid #1f2a30;
   color:var(--text);
-  padding:8px;
-  border-radius:8px;
+  padding:10px;
+  border-radius:10px;
 }
-button{background:var(--accent); color:#101010; cursor:pointer}
+button{background:var(--accent); color:#08130f; cursor:pointer; border:0}
 #login, #register{
   display:flex;
   gap:6px;
   flex-wrap:wrap;
 }
 #adminPanel{
-  margin-top:10px;
   display:none;
 }
 .section-title{
   font-size:14px;
-  color:var(--accent);
+  color:var(--muted);
   margin:8px 0 6px 0;
+  text-transform:uppercase;
+  letter-spacing:0.6px;
 }
 table{
   width:100%;
@@ -197,25 +260,44 @@ table{
   font-size:12px;
 }
 th, td{
-  border-bottom:1px solid #222;
+  border-bottom:1px solid #1f2a30;
   padding:6px;
   text-align:left;
 }
+.card{
+  background:#0f191f;
+  border:1px solid #1f2a30;
+  border-radius:10px;
+  padding:8px;
+}
+.chat-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  background:#202c33;
+  border-bottom:1px solid #1f2a30;
+}
+.chat-title{font-weight:bold}
+.chat-sub{font-size:12px;color:var(--muted)}
 @media (max-width:900px){
   #main{flex-direction:column}
   #left{width:100%}
-  #messages{height:260px}
+  #messages{height:300px}
 }
 </style>
 </head>
 <body>
 <header>
-  <h1>ESP32 Local Chat</h1>
+  <h1>ESP32 Chat</h1>
   <div id="status">Disconnected</div>
 </header>
 
 <div id="main">
   <div id="left" class="panel">
+    <div class="sidebar-header">
+      <div class="brand">Sohbetler</div>
+    </div>
     <div class="section-title">Giris / Kayit</div>
     <div id="login">
       <input id="loginUser" placeholder="Rumuz">
@@ -228,33 +310,34 @@ th, td{
       <button onclick="registerUser()">Kayit</button>
     </div>
 
+    <input class="search" placeholder="Ara...">
     <div class="section-title" style="margin-top:12px;">Kullanicilar</div>
-    <div id="users"></div>
+    <div id="users" class="list"></div>
 
     <div class="section-title">Gruplar</div>
-    <div id="groups"></div>
-    <div id="groupCreate" style="margin-top:6px;">
+    <div id="groups" class="list"></div>
+    <div id="groupCreate" class="card" style="margin-top:6px;">
       <input id="newGroupName" placeholder="Yeni grup adi">
       <input id="newGroupMembers" placeholder="Uyeler (virgul)">
       <button onclick="createGroup()">Olustur</button>
     </div>
 
-    <div id="adminPanel" class="panel" style="margin-top:10px;">
+    <div id="adminPanel" class="card" style="margin-top:10px;">
       <div class="section-title">Admin Paneli</div>
-      <div>
+      <div class="card" style="margin-bottom:8px;">
         <div class="section-title">AP Ayarlari</div>
         <input id="apSsid" placeholder="AP SSID">
         <input id="apPass" placeholder="AP Sifre">
         <button onclick="saveAp()">Kaydet ve Yeniden Baslat</button>
       </div>
-      <div style="margin-top:8px;">
+      <div class="card" style="margin-bottom:8px;">
         <div class="section-title">Wi-Fi Baglanti</div>
         <button onclick="scanWifi()">Aglari Tara</button>
         <select id="wifiList"></select>
         <input id="wifiPass" placeholder="Secilen ag sifresi">
         <button onclick="connectWifi()">Baglan</button>
       </div>
-      <div style="margin-top:8px;">
+      <div class="card">
         <div class="section-title">Kullanicilar</div>
         <table>
           <thead><tr><th>Rumuz</th><th>Sifre</th><th>IP</th></tr></thead>
@@ -265,8 +348,13 @@ th, td{
   </div>
 
   <div id="chat" class="panel">
-    <div class="section-title">Sohbet</div>
-    <div id="targetInfo">Hedef: -</div>
+    <div class="chat-header">
+      <div>
+        <div class="chat-title">Sohbet</div>
+        <div id="targetInfo" class="chat-sub">Hedef: -</div>
+      </div>
+      <div class="chat-sub">Yerel</div>
+    </div>
     <div id="messages"></div>
     <div id="composer">
       <input id="msgText" style="flex:1;" placeholder="Mesaj yaz...">
@@ -316,11 +404,24 @@ function refreshAll(){
     j.users.forEach(u=>{
       const d=document.createElement("div");
       d.className="user";
+      const avatar=document.createElement("div");
+      avatar.className="avatar";
+      avatar.innerText=(u.name && u.name.length>0)?u.name[0].toUpperCase():"?";
+      const meta=document.createElement("div");
+      meta.className="user-meta";
+      const name=document.createElement("div");
+      name.className="user-name";
+      name.innerText=u.name;
+      const sub=document.createElement("div");
+      sub.className="user-sub";
+      sub.innerText=u.online?"Cevrimici":"Cevrimdisi";
       const dot=document.createElement("div");
       dot.className="dot "+(u.online?"online":"");
-      const span=document.createElement("span");
-      span.innerText=u.name;
-      d.appendChild(dot); d.appendChild(span);
+      meta.appendChild(name);
+      meta.appendChild(sub);
+      d.appendChild(avatar);
+      d.appendChild(meta);
+      d.appendChild(dot);
       d.onclick=()=>{selectTarget(u.name,false);}
       cont.appendChild(d);
     });
@@ -332,11 +433,24 @@ function refreshAll(){
     j.groups.forEach(g=>{
       const d=document.createElement("div");
       d.className="user";
+      const avatar=document.createElement("div");
+      avatar.className="avatar";
+      avatar.innerText="#";
+      const meta=document.createElement("div");
+      meta.className="user-meta";
+      const name=document.createElement("div");
+      name.className="user-name";
+      name.innerText=g.name;
+      const sub=document.createElement("div");
+      sub.className="user-sub";
+      sub.innerText="Grup";
       const dot=document.createElement("div");
       dot.className="dot online";
-      const span=document.createElement("span");
-      span.innerText=g.name;
-      d.appendChild(dot); d.appendChild(span);
+      meta.appendChild(name);
+      meta.appendChild(sub);
+      d.appendChild(avatar);
+      d.appendChild(meta);
+      d.appendChild(dot);
       d.onclick=()=>{selectTarget(g.name,true);}
       cont.appendChild(d);
     });
