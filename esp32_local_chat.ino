@@ -1,6 +1,6 @@
 #include <WiFi.h>
 #include <FS.h>
-#include <LittleFS.h>
+#include <SPIFFS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
@@ -8,6 +8,7 @@
 
 // -------------------- Config --------------------
 // ASCII ONLY! No emoji, no Turkish chars.
+// Note: Changed to SPIFFS for better ArduinoDroid compatibility.
 
 const char* ADMIN_USER = "gusullu";
 const char* ADMIN_PASS = "omer3355";
@@ -47,8 +48,8 @@ const unsigned long ONLINE_TIMEOUT_MS = 10000;
 // Load users from LittleFS
 void loadUsers() {
   users.clear();
-  if(!LittleFS.exists("/users.json")) return;
-  File f = LittleFS.open("/users.json", "r");
+  if(!SPIFFS.exists("/users.json")) return;
+  File f = SPIFFS.open("/users.json", "r");
   if(!f) return;
   
   DynamicJsonDocument doc(8192);
@@ -79,7 +80,7 @@ void saveUsers() {
     obj["av"] = u.avatar;
     obj["ip"] = u.ip;
   }
-  File f = LittleFS.open("/users.json", "w");
+  File f = SPIFFS.open("/users.json", "w");
   if(f) {
     serializeJson(doc, f);
     f.close();
@@ -436,8 +437,8 @@ unsigned long typeTime = 0;
 void setup() {
   Serial.begin(115200);
   
-  if(!LittleFS.begin(true)) {
-    Serial.println("LFS Fail");
+  if(!SPIFFS.begin(true)) {
+    Serial.println("SPIFFS Fail");
   }
   loadUsers();
   
