@@ -13,7 +13,7 @@ const char* ADMIN_PASS = "omer3355";
 String apSsid = "ESP32-CHAT";
 String apPass = "12345678";
 
-struct User {
+struct ChatUser {
   String name;
   String pass;
   String ip;
@@ -38,7 +38,7 @@ struct Group {
   std::vector<String> members;
 };
 
-std::vector<User> users;
+std::vector<ChatUser> users;
 std::vector<Message> messages;
 std::vector<Group> groups;
 std::vector<String> bannedIps;
@@ -852,7 +852,7 @@ void handleRegister() {
     server.send(200, "application/json", "{\"ok\":false,\"msg\":\"var\"}");
     return;
   }
-  User nu;
+  ChatUser nu;
   nu.name = u;
   nu.pass = p;
   nu.ip = ip;
