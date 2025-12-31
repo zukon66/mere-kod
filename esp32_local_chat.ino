@@ -85,269 +85,293 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>ESP32 Local Chat</title>
+<title>ESP32 Chat</title>
 <style>
 :root{
-  --bg:#0b141a;
-  --panel:#111b21;
-  --panel2:#1f2c33;
+  --bg:#111b21;
+  --panel:#202c33;
+  --chat-bg:#0b141a;
+  --in-msg:#202c33;
+  --out-msg:#005c4b;
   --accent:#00a884;
-  --accent-soft:#0b5e4a;
   --text:#e9edef;
   --muted:#8696a0;
-  --green:#25d366;
-  --gray:#3c4a52;
+  --divider:#2a3942;
 }
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family: "Trebuchet MS", Tahoma, sans-serif;
-  background:radial-gradient(circle at 10% 10%, #0f1a21 0, #0b141a 55%, #0a1217 100%);
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background:var(--bg);
   color:var(--text);
 }
-header{
-  padding:12px 16px;
-  background:linear-gradient(135deg, #111b21, #0f1a20);
-  border-bottom:1px solid #1f2a30;
+#main{
+  display:flex;
+  height:100vh;
+  width:100vw;
+}
+.sidebar{
+  width:320px;
+  min-width:260px;
+  background:var(--panel);
+  border-right:1px solid var(--divider);
+  display:flex;
+  flex-direction:column;
+}
+.sidebar-header{
+  padding:14px 16px;
   display:flex;
   align-items:center;
   justify-content:space-between;
+  border-bottom:1px solid var(--divider);
 }
-header h1{font-size:18px;margin:0;color:var(--text);letter-spacing:0.3px}
+.sidebar-title{
+  font-size:16px;
+  font-weight:600;
+}
 #status{
   font-size:12px;
   color:#0b141a;
   background:var(--accent);
-  padding:6px 10px;
+  padding:4px 8px;
   border-radius:999px;
 }
-#main{
+.sidebar-body{
+  padding:10px;
   display:flex;
-  flex-direction:row;
+  flex-direction:column;
   gap:10px;
-  padding:10px;
-  min-height:calc(100vh - 56px);
+  overflow:auto;
 }
-.panel{
-  background:var(--panel);
-  border:1px solid #1f2a30;
-  border-radius:12px;
-  padding:10px;
+.section-title{
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  margin:2px 0 6px 0;
 }
-#left{
-  width:300px;
-  min-width:240px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
+.card{
+  background:#111b21;
+  border:1px solid var(--divider);
+  border-radius:10px;
+  padding:8px;
 }
-#chat{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  gap:0;
-  padding:0;
-  overflow:hidden;
-}
-.sidebar-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:4px 4px 6px 4px;
-}
-.brand{
-  font-weight:bold;
+input, select, button{
+  width:100%;
+  background:#111b21;
+  border:1px solid var(--divider);
   color:var(--text);
-  letter-spacing:0.4px;
+  padding:10px;
+  border-radius:8px;
+  outline:none;
+}
+button{
+  background:var(--accent);
+  color:#0b141a;
+  border:0;
+  cursor:pointer;
+  font-weight:600;
+}
+#login, #register{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
 }
 .search{
-  background:#0f191f;
-  border:1px solid #1f2a30;
+  background:#111b21;
+  border:1px solid var(--divider);
   color:var(--text);
   padding:8px 10px;
   border-radius:8px;
-  width:100%;
 }
 .list{
-  background:var(--panel);
-  border:1px solid #1f2a30;
+  border:1px solid var(--divider);
   border-radius:10px;
-  overflow:hidden;
-  max-height:260px;
   overflow:auto;
+  max-height:200px;
 }
 .user{
-  padding:8px 10px;
-  border-bottom:1px solid #1f2a30;
   display:flex;
   align-items:center;
   gap:10px;
+  padding:10px;
+  border-bottom:1px solid var(--divider);
   cursor:pointer;
-  transition:background 0.2s ease;
 }
-.user:hover{background:#0f191f}
+.user:last-child{border-bottom:none}
+.user:hover{background:#1a2328}
 .avatar{
   width:36px;
   height:36px;
   border-radius:50%;
   background:#2a3942;
-  color:#cfd8dc;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-weight:bold;
+  font-weight:600;
 }
 .user-meta{flex:1; min-width:0}
 .user-name{font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .user-sub{font-size:12px; color:var(--muted)}
 .dot{
   width:8px;height:8px;border-radius:50%;
-  background:var(--gray);
+  background:#55626b;
 }
-.dot.online{background:var(--green)}
+.dot.online{background:#25d366}
+.chat{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  background:var(--chat-bg);
+}
+.chat-header{
+  background:var(--panel);
+  padding:12px 16px;
+  border-bottom:1px solid var(--divider);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.chat-title{
+  font-size:14px;
+  font-weight:600;
+}
+.chat-sub{
+  font-size:12px;
+  color:var(--muted);
+}
 #messages{
-  height:420px;
+  flex:1;
+  padding:16px;
   overflow:auto;
   background:
     radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 0, rgba(255,255,255,0) 35%),
     linear-gradient(180deg, #0b141a 0%, #0b141a 100%);
-  padding:14px;
-  border-top:1px solid #1f2a30;
-  border-bottom:1px solid #1f2a30;
 }
 .msg{
+  position:relative;
   margin:6px 0;
   padding:8px 12px;
-  border-radius:10px 10px 10px 4px;
-  max-width:80%;
+  border-radius:8px;
+  max-width:78%;
   font-size:14px;
-  line-height:1.4;
+  line-height:1.35;
 }
-.msg.me{background:var(--accent); color:#08130f; margin-left:auto; border-radius:10px 10px 4px 10px}
-.msg.other{background:#202c33; color:var(--text)}
-#composer{
-  display:flex;
-  gap:8px;
-  padding:10px;
-  background:var(--panel);
-}
-input, select, button{
-  background:#0f191f;
-  border:1px solid #1f2a30;
+.msg.other{
+  background:var(--in-msg);
   color:var(--text);
-  padding:10px;
-  border-radius:10px;
+  border-top-left-radius:2px;
 }
-button{background:var(--accent); color:#08130f; cursor:pointer; border:0}
-#login, #register{
+.msg.me{
+  background:var(--out-msg);
+  color:var(--text);
+  margin-left:auto;
+  border-top-right-radius:2px;
+}
+.msg.other:before{
+  content:"";
+  position:absolute;
+  left:-6px;
+  top:6px;
+  width:0;height:0;
+  border-top:6px solid transparent;
+  border-bottom:6px solid transparent;
+  border-right:6px solid var(--in-msg);
+}
+.msg.me:after{
+  content:"";
+  position:absolute;
+  right:-6px;
+  top:6px;
+  width:0;height:0;
+  border-top:6px solid transparent;
+  border-bottom:6px solid transparent;
+  border-left:6px solid var(--out-msg);
+}
+#composer{
+  padding:12px 16px;
+  background:var(--panel);
+  border-top:1px solid var(--divider);
   display:flex;
-  gap:6px;
-  flex-wrap:wrap;
+  gap:10px;
 }
-#adminPanel{
-  display:none;
-}
-.section-title{
-  font-size:14px;
-  color:var(--muted);
-  margin:8px 0 6px 0;
-  text-transform:uppercase;
-  letter-spacing:0.6px;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:12px;
-}
-th, td{
-  border-bottom:1px solid #1f2a30;
-  padding:6px;
-  text-align:left;
-}
-.card{
-  background:#0f191f;
-  border:1px solid #1f2a30;
-  border-radius:10px;
-  padding:8px;
-}
-.chat-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:12px 14px;
-  background:#202c33;
-  border-bottom:1px solid #1f2a30;
-}
-.chat-title{font-weight:bold}
-.chat-sub{font-size:12px;color:var(--muted)}
+#msgText{flex:1}
 @media (max-width:900px){
   #main{flex-direction:column}
-  #left{width:100%}
-  #messages{height:300px}
+  .sidebar{width:100%;min-width:0;height:55vh}
+  .chat{height:45vh}
 }
 </style>
 </head>
 <body>
-<header>
-  <h1>ESP32 Chat</h1>
-  <div id="status">Disconnected</div>
-</header>
-
 <div id="main">
-  <div id="left" class="panel">
+  <div class="sidebar">
     <div class="sidebar-header">
-      <div class="brand">Sohbetler</div>
+      <div class="sidebar-title">ESP32 Chat</div>
+      <div id="status">Disconnected</div>
     </div>
-    <div class="section-title">Giris / Kayit</div>
-    <div id="login">
-      <input id="loginUser" placeholder="Rumuz">
-      <input id="loginPass" type="password" placeholder="Sifre">
-      <button onclick="login()">Giris</button>
-    </div>
-    <div id="register" style="margin-top:6px;">
-      <input id="regUser" placeholder="Rumuz">
-      <input id="regPass" type="password" placeholder="Sifre">
-      <button onclick="registerUser()">Kayit</button>
-    </div>
-
-    <input class="search" placeholder="Ara...">
-    <div class="section-title" style="margin-top:12px;">Kullanicilar</div>
-    <div id="users" class="list"></div>
-
-    <div class="section-title">Gruplar</div>
-    <div id="groups" class="list"></div>
-    <div id="groupCreate" class="card" style="margin-top:6px;">
-      <input id="newGroupName" placeholder="Yeni grup adi">
-      <input id="newGroupMembers" placeholder="Uyeler (virgul)">
-      <button onclick="createGroup()">Olustur</button>
-    </div>
-
-    <div id="adminPanel" class="card" style="margin-top:10px;">
-      <div class="section-title">Admin Paneli</div>
-      <div class="card" style="margin-bottom:8px;">
-        <div class="section-title">AP Ayarlari</div>
-        <input id="apSsid" placeholder="AP SSID">
-        <input id="apPass" placeholder="AP Sifre">
-        <button onclick="saveAp()">Kaydet ve Yeniden Baslat</button>
-      </div>
-      <div class="card" style="margin-bottom:8px;">
-        <div class="section-title">Wi-Fi Baglanti</div>
-        <button onclick="scanWifi()">Aglari Tara</button>
-        <select id="wifiList"></select>
-        <input id="wifiPass" placeholder="Secilen ag sifresi">
-        <button onclick="connectWifi()">Baglan</button>
-      </div>
+    <div class="sidebar-body">
       <div class="card">
+        <div class="section-title">Giris</div>
+        <div id="login">
+          <input id="loginUser" placeholder="Rumuz">
+          <input id="loginPass" type="password" placeholder="Sifre">
+          <button onclick="login()">Giris</button>
+        </div>
+        <div class="section-title" style="margin-top:10px;">Kayit</div>
+        <div id="register">
+          <input id="regUser" placeholder="Rumuz">
+          <input id="regPass" type="password" placeholder="Sifre">
+          <button onclick="registerUser()">Kayit</button>
+        </div>
+      </div>
+
+      <input class="search" placeholder="Ara...">
+
+      <div>
         <div class="section-title">Kullanicilar</div>
-        <table>
-          <thead><tr><th>Rumuz</th><th>Sifre</th><th>IP</th></tr></thead>
-          <tbody id="adminUsers"></tbody>
-        </table>
+        <div id="users" class="list"></div>
+      </div>
+
+      <div>
+        <div class="section-title">Gruplar</div>
+        <div id="groups" class="list"></div>
+      </div>
+
+      <div id="groupCreate" class="card">
+        <div class="section-title">Yeni Grup</div>
+        <input id="newGroupName" placeholder="Grup adi">
+        <input id="newGroupMembers" placeholder="Uyeler (virgul)">
+        <button onclick="createGroup()">Olustur</button>
+      </div>
+
+      <div id="adminPanel" class="card">
+        <div class="section-title">Admin Paneli</div>
+        <div class="card" style="margin-bottom:8px;">
+          <div class="section-title">AP Ayarlari</div>
+          <input id="apSsid" placeholder="AP SSID">
+          <input id="apPass" placeholder="AP Sifre">
+          <button onclick="saveAp()">Kaydet ve Yeniden Baslat</button>
+        </div>
+        <div class="card" style="margin-bottom:8px;">
+          <div class="section-title">Wi-Fi Baglanti</div>
+          <button onclick="scanWifi()">Aglari Tara</button>
+          <select id="wifiList"></select>
+          <input id="wifiPass" placeholder="Secilen ag sifresi">
+          <button onclick="connectWifi()">Baglan</button>
+        </div>
+        <div class="card">
+          <div class="section-title">Kullanicilar</div>
+          <table>
+            <thead><tr><th>Rumuz</th><th>Sifre</th><th>IP</th></tr></thead>
+            <tbody id="adminUsers"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="chat" class="panel">
+  <div class="chat">
     <div class="chat-header">
       <div>
         <div class="chat-title">Sohbet</div>
@@ -357,7 +381,7 @@ th, td{
     </div>
     <div id="messages"></div>
     <div id="composer">
-      <input id="msgText" style="flex:1;" placeholder="Mesaj yaz...">
+      <input id="msgText" placeholder="Mesaj yaz...">
       <button onclick="sendMsg()">Gonder</button>
     </div>
   </div>
