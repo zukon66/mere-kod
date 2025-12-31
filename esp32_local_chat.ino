@@ -84,109 +84,95 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>ESP32 Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>ESP Chat</title>
 <style>
-:root{
-  --bg:#111b21;
-  --panel:#202c33;
-  --chat-bg:#0b141a;
-  --in-msg:#202c33;
-  --out-msg:#005c4b;
-  --accent:#00a884;
-  --text:#e9edef;
-  --muted:#8696a0;
-  --divider:#2a3942;
-}
 *{box-sizing:border-box}
 body{
+  font-family:sans-serif;
+  background-color:#d1d7db;
   margin:0;
-  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  background:var(--bg);
-  color:var(--text);
+  height:100vh;
 }
 #main{
-  display:flex;
   height:100vh;
   width:100vw;
+  display:flex;
 }
 .sidebar{
   width:320px;
   min-width:260px;
-  background:var(--panel);
-  border-right:1px solid var(--divider);
+  background:#ffffff;
   display:flex;
   flex-direction:column;
+  border-right:1px solid #e6e6e6;
 }
 .sidebar-header{
+  background:#008069;
+  color:#ffffff;
   padding:14px 16px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  border-bottom:1px solid var(--divider);
 }
 .sidebar-title{
-  font-size:16px;
-  font-weight:600;
+  font-size:18px;
+  font-weight:bold;
 }
 #status{
   font-size:12px;
-  color:#0b141a;
-  background:var(--accent);
-  padding:4px 8px;
-  border-radius:999px;
+  font-weight:bold;
 }
 .sidebar-body{
+  flex:1;
+  overflow:auto;
+  background:#ffffff;
   padding:10px;
   display:flex;
   flex-direction:column;
   gap:10px;
-  overflow:auto;
 }
 .section-title{
-  font-size:11px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:0.6px;
-  margin:2px 0 6px 0;
+  font-size:12px;
+  color:#666;
+  font-weight:bold;
+  margin:6px 0 4px 0;
 }
 .card{
-  background:#111b21;
-  border:1px solid var(--divider);
-  border-radius:10px;
-  padding:8px;
-}
-input, select, button{
-  width:100%;
-  background:#111b21;
-  border:1px solid var(--divider);
-  color:var(--text);
+  background:#ffffff;
+  border:1px solid #eee;
+  border-radius:6px;
   padding:10px;
-  border-radius:8px;
-  outline:none;
-}
-button{
-  background:var(--accent);
-  color:#0b141a;
-  border:0;
-  cursor:pointer;
-  font-weight:600;
 }
 #login, #register{
   display:flex;
   flex-direction:column;
   gap:6px;
 }
+input, select, button{
+  width:100%;
+  padding:10px;
+  border:1px solid #ddd;
+  border-radius:20px;
+  outline:none;
+}
+button{
+  background:#008069;
+  color:#ffffff;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+}
 .search{
-  background:#111b21;
-  border:1px solid var(--divider);
-  color:var(--text);
-  padding:8px 10px;
-  border-radius:8px;
+  background:#ffffff;
+  border:1px solid #ddd;
+  border-radius:20px;
+  padding:8px 12px;
 }
 .list{
-  border:1px solid var(--divider);
-  border-radius:10px;
+  background:#ffffff;
+  border:1px solid #eee;
+  border-radius:6px;
   overflow:auto;
   max-height:200px;
 }
@@ -194,108 +180,81 @@ button{
   display:flex;
   align-items:center;
   gap:10px;
-  padding:10px;
-  border-bottom:1px solid var(--divider);
+  padding:12px;
+  border-bottom:1px solid #eee;
   cursor:pointer;
 }
 .user:last-child{border-bottom:none}
-.user:hover{background:#1a2328}
 .avatar{
-  width:36px;
-  height:36px;
+  width:40px;
+  height:40px;
+  background:#ddd;
   border-radius:50%;
-  background:#2a3942;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-weight:600;
+  color:#ffffff;
+  font-weight:bold;
 }
 .user-meta{flex:1; min-width:0}
 .user-name{font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.user-sub{font-size:12px; color:var(--muted)}
-.dot{
-  width:8px;height:8px;border-radius:50%;
-  background:#55626b;
-}
-.dot.online{background:#25d366}
+.user-sub{font-size:12px; color:#666}
+.dot{width:8px;height:8px;border-radius:50%;background:#bbb}
+.dot.online{background:#00a884}
+
 .chat{
   flex:1;
   display:flex;
   flex-direction:column;
-  background:var(--chat-bg);
+  background:#e5ddd5;
 }
 .chat-header{
-  background:var(--panel);
-  padding:12px 16px;
-  border-bottom:1px solid var(--divider);
+  background:#008069;
+  color:#ffffff;
+  padding:14px 16px;
   display:flex;
   align-items:center;
   justify-content:space-between;
 }
-.chat-title{
-  font-size:14px;
-  font-weight:600;
-}
-.chat-sub{
-  font-size:12px;
-  color:var(--muted);
-}
+.chat-title{font-size:16px;font-weight:bold}
+.chat-sub{font-size:12px}
 #messages{
   flex:1;
-  padding:16px;
   overflow:auto;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 0, rgba(255,255,255,0) 35%),
-    linear-gradient(180deg, #0b141a 0%, #0b141a 100%);
+  padding:10px;
+  display:flex;
+  flex-direction:column;
 }
 .msg{
-  position:relative;
-  margin:6px 0;
-  padding:8px 12px;
-  border-radius:8px;
-  max-width:78%;
+  max-width:75%;
+  padding:8px;
+  margin:3px 0;
+  border-radius:7px;
   font-size:14px;
-  line-height:1.35;
+  word-wrap:break-word;
 }
-.msg.other{
-  background:var(--in-msg);
-  color:var(--text);
-  border-top-left-radius:2px;
-}
-.msg.me{
-  background:var(--out-msg);
-  color:var(--text);
-  margin-left:auto;
-  border-top-right-radius:2px;
-}
-.msg.other:before{
-  content:"";
-  position:absolute;
-  left:-6px;
-  top:6px;
-  width:0;height:0;
-  border-top:6px solid transparent;
-  border-bottom:6px solid transparent;
-  border-right:6px solid var(--in-msg);
-}
-.msg.me:after{
-  content:"";
-  position:absolute;
-  right:-6px;
-  top:6px;
-  width:0;height:0;
-  border-top:6px solid transparent;
-  border-bottom:6px solid transparent;
-  border-left:6px solid var(--out-msg);
-}
+.msg.other{background:#ffffff; align-self:flex-start}
+.msg.me{background:#dcf8c6; align-self:flex-end}
 #composer{
-  padding:12px 16px;
-  background:var(--panel);
-  border-top:1px solid var(--divider);
+  background:#f0f0f0;
+  padding:8px;
   display:flex;
-  gap:10px;
+  gap:8px;
 }
-#msgText{flex:1}
+#msgText{
+  flex:1;
+  border-radius:20px;
+  border:none;
+}
+#composer button{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  padding:0;
+}
+
+#adminPanel{display:none}
+
 @media (max-width:900px){
   #main{flex-direction:column}
   .sidebar{width:100%;min-width:0;height:55vh}
@@ -307,7 +266,7 @@ button{
 <div id="main">
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-title">ESP32 Chat</div>
+      <div class="sidebar-title">ESP Chat</div>
       <div id="status">Disconnected</div>
     </div>
     <div class="sidebar-body">
@@ -316,13 +275,13 @@ button{
         <div id="login">
           <input id="loginUser" placeholder="Rumuz">
           <input id="loginPass" type="password" placeholder="Sifre">
-          <button onclick="login()">Giris</button>
+          <button onclick="login()">GIRIS YAP</button>
         </div>
         <div class="section-title" style="margin-top:10px;">Kayit</div>
         <div id="register">
           <input id="regUser" placeholder="Rumuz">
           <input id="regPass" type="password" placeholder="Sifre">
-          <button onclick="registerUser()">Kayit</button>
+          <button onclick="registerUser()">KAYIT OL</button>
         </div>
       </div>
 
@@ -340,9 +299,9 @@ button{
 
       <div id="groupCreate" class="card">
         <div class="section-title">Yeni Grup</div>
-        <input id="newGroupName" placeholder="Grup adi">
+        <input id="newGroupName" placeholder="Grup Ismi">
         <input id="newGroupMembers" placeholder="Uyeler (virgul)">
-        <button onclick="createGroup()">Olustur</button>
+        <button onclick="createGroup()">OLUSTUR</button>
       </div>
 
       <div id="adminPanel" class="card">
@@ -355,7 +314,7 @@ button{
         </div>
         <div class="card" style="margin-bottom:8px;">
           <div class="section-title">Wi-Fi Baglanti</div>
-          <button onclick="scanWifi()">Aglari Tara</button>
+          <button onclick="scanWifi()">Ag Tara & Baglan</button>
           <select id="wifiList"></select>
           <input id="wifiPass" placeholder="Secilen ag sifresi">
           <button onclick="connectWifi()">Baglan</button>
@@ -373,16 +332,13 @@ button{
 
   <div class="chat">
     <div class="chat-header">
-      <div>
-        <div class="chat-title">Sohbet</div>
-        <div id="targetInfo" class="chat-sub">Hedef: -</div>
-      </div>
-      <div class="chat-sub">Yerel</div>
+      <div class="chat-title">Sohbet</div>
+      <div id="targetInfo" class="chat-sub">Hedef: -</div>
     </div>
     <div id="messages"></div>
     <div id="composer">
-      <input id="msgText" placeholder="Mesaj yaz...">
-      <button onclick="sendMsg()">Gonder</button>
+      <input id="msgText" placeholder="Mesaj...">
+      <button onclick="sendMsg()">></button>
     </div>
   </div>
 </div>
