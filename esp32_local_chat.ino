@@ -1,5 +1,3 @@
-struct User;
-
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Preferences.h>
@@ -85,9 +83,10 @@ bool ipBanned(const String &ip) {
   return false;
 }
 
-bool userBlocks(const User &u, const String &other) {
-  for (size_t i = 0; i < u.blocked.size(); i++) {
-    if (u.blocked[i] == other) return true;
+bool userBlocksIdx(int idx, const String &other) {
+  if (idx < 0 || (size_t)idx >= users.size()) return false;
+  for (size_t i = 0; i < users[idx].blocked.size(); i++) {
+    if (users[idx].blocked[i] == other) return true;
   }
   return false;
 }
@@ -96,8 +95,8 @@ bool isBlockedPair(const String &a, const String &b) {
   int ia = findUser(a);
   int ib = findUser(b);
   if (ia < 0 || ib < 0) return false;
-  if (userBlocks(users[ia], b)) return true;
-  if (userBlocks(users[ib], a)) return true;
+  if (userBlocksIdx(ia, b)) return true;
+  if (userBlocksIdx(ib, a)) return true;
   return false;
 }
 
@@ -817,7 +816,7 @@ void handleUserBlock() {
     server.send(200, "application/json", "{\"ok\":false}");
     return;
   }
-  if (!userBlocks(users[idx], b)) {
+  if (!userBlocksIdx(idx, b)) {
     users[idx].blocked.push_back(b);
   }
   for (size_t i = 0; i < groups.size(); i++) {
