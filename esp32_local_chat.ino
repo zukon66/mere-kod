@@ -38,8 +38,17 @@ struct Message {
   unsigned long ts;
 };
 
+const size_t MAX_NAME_LEN = sizeof(((ChatUser*)nullptr)->name) - 1;
+const size_t MAX_PASS_LEN = sizeof(((ChatUser*)nullptr)->pass) - 1;
+
 std::vector<ChatUser*> users;
 std::vector<Message*> messages;
+
+// Release heap allocations owned by vectors
+void freeUsers() {
+  for(auto *u : users) delete u;
+  users.clear();
+}
 
 const unsigned long ONLINE_TIMEOUT_MS = 10000;
 
@@ -53,7 +62,7 @@ void safeCpy(char* dest, const char* src, size_t size) {
 }
 
 void loadUsers() {
-  users.clear();
+  freeUsers();
   if(!SPIFFS.exists("/users.json")) return;
   File f = SPIFFS.open("/users.json", "r");
   if(!f) return;
@@ -101,6 +110,12 @@ int findUser(const char* name) {
 
 bool isAdmin(const char* u, const char* p) {
   return (strcmp(u, ADMIN_USER) == 0 && strcmp(p, ADMIN_PASS) == 0);
+}
+
+bool requireAdmin(AsyncWebServerRequest *request) {
+  if(isAdmin(request->arg("u").c_str(), request->arg("pass").c_str())) return true;
+  request->send(403, "application/json", "{\"ok\":false,\"msg\":\"forbidden\"}");
+  return false;
 }
 
 // -------------------- HTML --------------------
@@ -270,9 +285,19 @@ function selAv(name) {
 
 function req(url, data, cb) {
   let fd = new FormData();
-  if(state.u) { fd.append("u", state.u); fd.append("p", state.p); }
+  if(state.u) { fd.append("u", state.u); fd.append("pass", state.p); }
   for(let k in data) fd.append(k, data[k]);
-  fetch(url, { method:"POST", body:fd }).then(r=>r.json()).then(cb).catch(e=>console.log(e));
+  fetch(url, { method:"POST", body:fd })
+    .then(resp => resp.json().then(body => ({ ok: resp.ok, body })))
+    .then(res => {
+      if(!res.ok) {
+        console.warn("Request failed", url, res.body);
+        if(res.body && res.body.msg) alert(res.body.msg);
+        return;
+      }
+      if(typeof cb === "function") cb(res.body);
+    })
+    .catch(e=>console.log(e));
 }
 
 function doLogin() {
@@ -356,8 +381,8 @@ function loadAdmUsers() {
 }
 function banUser(u) { if(confirm("Sil?")) req("/admin/ban", {target:u}, r => loadAdmUsers()); }
 function admScan() { req("/admin/scan", {}, r => { document.getElementById("scanRes").innerHTML = r.nets.join(", "); }); }
-function admConn() { req("/admin/connect", {s:document.getElementById("wSsid").value, p:document.getElementById("wPass").value}, r=>{alert("Baglaniyor...")}); }
-function admAp() { req("/admin/ap", {s:document.getElementById("apName").value, p:document.getElementById("apKey").value}, r=>{alert("Resetleniyor...")}); }
+function admConn() { req("/admin/connect", {s:document.getElementById("wSsid").value, wifiPass:document.getElementById("wPass").value}, r=>{alert("Baglaniyor...")}); }
+function admAp() { req("/admin/ap", {s:document.getElementById("apName").value, apPass:document.getElementById("apKey").value}, r=>{alert("Resetleniyor...")}); }
 function admAnnounce() { req("/admin/announce", {txt:document.getElementById("annText").value}, r=>{alert("Gonderildi");}); }
 
 </script>
@@ -405,7 +430,9 @@ void setup() {
     String u = request->arg("user");
     String p = request->arg("pass");
     String av = request->arg("av");
-    if(findUser(u.c_str()) >= 0 || u == ADMIN_USER || u.length()<2) {
+    bool badName = (u.length() < 2 || u.length() > MAX_NAME_LEN);
+    bool badPass = (p.length() < 2 || p.length() > MAX_PASS_LEN);
+    if(badName || badPass || findUser(u.c_str()) >= 0 || u == ADMIN_USER) {
       request->send(200, "application/json", "{\"ok\":false,\"msg\":\"Gecersiz\"}");
       return;
     }
@@ -422,13 +449,13 @@ void setup() {
   
   server.on("/send", HTTP_POST, [](AsyncWebServerRequest *request){
     String u = request->arg("u");
-    String p = request->arg("p");
+    String pass = request->arg("pass");
     String t = request->arg("txt");
     
     int idx = findUser(u.c_str());
-    bool admin = isAdmin(u.c_str(), p.c_str());
+    bool admin = isAdmin(u.c_str(), pass.c_str());
     
-    if(admin || (idx >= 0 && strcmp(users[idx]->pass, p.c_str()) == 0)) {
+    if(admin || (idx >= 0 && strcmp(users[idx]->pass, pass.c_str()) == 0)) {
         Message *m = new Message();
         safeCpy(m->from, u.c_str(), 32);
         safeCpy(m->text, t.c_str(), 128);
@@ -491,7 +518,7 @@ void setup() {
   });
   
   server.on("/admin/users", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
+      if(!requireAdmin(request)) return;
       String json = "{\"users\":[";
       for(size_t i=0; i<users.size(); i++) {
           if(i>0) json += ",";
@@ -502,14 +529,14 @@ void setup() {
   });
   
   server.on("/admin/ban", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
+      if(!requireAdmin(request)) return;
       int idx = findUser(request->arg("target").c_str());
       if(idx >= 0) { delete users[idx]; users.erase(users.begin() + idx); saveUsers(); }
       request->send(200, "application/json", "{}");
   });
   
    server.on("/admin/scan", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
+      if(!requireAdmin(request)) return;
       int n = WiFi.scanNetworks();
       String json = "{\"nets\":[";
       for(int i=0; i<n; i++) {
@@ -521,13 +548,13 @@ void setup() {
   });
   
   server.on("/admin/connect", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
-      WiFi.begin(request->arg("s").c_str(), request->arg("p").c_str());
+      if(!requireAdmin(request)) return;
+      WiFi.begin(request->arg("s").c_str(), request->arg("wifiPass").c_str());
       request->send(200, "application/json", "{}");
   });
   
    server.on("/admin/announce", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
+      if(!requireAdmin(request)) return;
       Message *m = new Message();
       safeCpy(m->from, "SISTEM", 32);
       safeCpy(m->text, request->arg("txt").c_str(), 128);
@@ -538,7 +565,7 @@ void setup() {
   });
   
    server.on("/admin/ap", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
+      if(!requireAdmin(request)) return;
       request->send(200, "application/json", "{}");
       delay(500);
       ESP.restart();
