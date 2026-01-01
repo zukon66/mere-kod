@@ -8,7 +8,8 @@
 
 // -------------------- Config --------------------
 // ASCII ONLY! No emoji, no Turkish chars.
-// Note: Changed to SPIFFS for better ArduinoDroid compatibility.
+// Changed to SPIFFS for better ArduinoDroid compatibility.
+// Changed to Pointers in Vector to fix String copy error.
 
 const char* ADMIN_USER = "gusullu";
 const char* ADMIN_PASS = "omer3355";
@@ -38,14 +39,15 @@ struct Message {
   unsigned long ts;
 };
 
-std::vector<ChatUser> users;
-std::vector<Message> messages;
+// Store Pointers to avoid String copy verification issues in ancient GCC
+std::vector<ChatUser*> users;
+std::vector<Message*> messages;
 
 const unsigned long ONLINE_TIMEOUT_MS = 10000;
 
 // -------------------- Helpers --------------------
 
-// Load users from LittleFS
+// Load users from SPIFFS
 void loadUsers() {
   users.clear();
   if(!SPIFFS.exists("/users.json")) return;
@@ -58,27 +60,27 @@ void loadUsers() {
   
   JsonArray arr = doc.as<JsonArray>();
   for(JsonObject obj : arr) {
-    ChatUser u;
-    u.name = obj["u"].as<String>();
-    u.pass = obj["p"].as<String>();
-    u.avatar = obj["av"].as<String>();
-    u.ip = obj["ip"].as<String>();
-    u.online = false;
-    u.lastActiveMs = 0;
+    ChatUser *u = new ChatUser();
+    u->name = obj["u"].as<String>();
+    u->pass = obj["p"].as<String>();
+    u->avatar = obj["av"].as<String>();
+    u->ip = obj["ip"].as<String>();
+    u->online = false;
+    u->lastActiveMs = 0;
     users.push_back(u);
   }
 }
 
-// Save users to LittleFS
+// Save users to SPIFFS
 void saveUsers() {
   DynamicJsonDocument doc(8192);
   JsonArray arr = doc.to<JsonArray>();
-  for(const auto &u : users) {
+  for(const auto *u : users) {
     JsonObject obj = arr.createNestedObject();
-    obj["u"] = u.name;
-    obj["p"] = u.pass;
-    obj["av"] = u.avatar;
-    obj["ip"] = u.ip;
+    obj["u"] = u->name;
+    obj["p"] = u->pass;
+    obj["av"] = u->avatar;
+    obj["ip"] = u->ip;
   }
   File f = SPIFFS.open("/users.json", "w");
   if(f) {
@@ -89,7 +91,7 @@ void saveUsers() {
 
 int findUser(const String &name) {
   for(size_t i=0; i<users.size(); i++) {
-    if(users[i].name == name) return (int)i;
+    if(users[i]->name == name) return (int)i;
   }
   return -1;
 }
@@ -462,11 +464,11 @@ void setup() {
     }
     
     int idx = findUser(u);
-    if(idx >= 0 && users[idx].pass == p) {
-        users[idx].ip = request->client()->remoteIP().toString();
-        users[idx].online = true;
-        users[idx].lastActiveMs = millis();
-        String json = "{\"ok\":true,\"admin\":false,\"av\":\"" + users[idx].avatar + "\"}";
+    if(idx >= 0 && users[idx]->pass == p) {
+        users[idx]->ip = request->client()->remoteIP().toString();
+        users[idx]->online = true;
+        users[idx]->lastActiveMs = millis();
+        String json = "{\"ok\":true,\"admin\":false,\"av\":\"" + users[idx]->avatar + "\"}";
         request->send(200, "application/json", json);
     } else {
         request->send(200, "application/json", "{\"ok\":false}");
@@ -483,8 +485,8 @@ void setup() {
       return;
     }
     
-    ChatUser nu;
-    nu.name = u; nu.pass = p; nu.avatar = av; nu.online = false; nu.ip="-";
+    ChatUser *nu = new ChatUser();
+    nu->name = u; nu->pass = p; nu->avatar = av; nu->online = false; nu->ip="-";
     users.push_back(nu);
     saveUsers();
     request->send(200, "application/json", "{\"ok\":true}");
@@ -498,17 +500,20 @@ void setup() {
     int idx = findUser(u);
     bool admin = isAdmin(u, p);
     
-    if(admin || (idx >= 0 && users[idx].pass == p)) {
-        Message m;
-        m.from = u;
-        m.text = t;
-        m.isSystem = false;
-        m.ts = millis();
+    if(admin || (idx >= 0 && users[idx]->pass == p)) {
+        Message *m = new Message();
+        m->from = u;
+        m->text = t;
+        m->isSystem = false;
+        m->ts = millis();
         messages.push_back(m);
         // prune old
-        if(messages.size() > 50) messages.erase(messages.begin());
+        if(messages.size() > 50) {
+            delete messages[0];
+            messages.erase(messages.begin());
+        }
         
-        if(idx >= 0) { users[idx].lastActiveMs = millis(); users[idx].online = true; }
+        if(idx >= 0) { users[idx]->lastActiveMs = millis(); users[idx]->online = true; }
         
         request->send(200, "application/json", "{\"ok\":true}");
     } else {
@@ -523,7 +528,7 @@ void setup() {
     
     // Update online
     int idx = findUser(u);
-    if(idx >= 0) { users[idx].lastActiveMs = millis(); users[idx].online = true; }
+    if(idx >= 0) { users[idx]->lastActiveMs = millis(); users[idx]->online = true; }
     
     // JSON build
     String json = "{";
@@ -531,10 +536,10 @@ void setup() {
     // Users
     json += "\"users\":[";
     bool f = true;
-    for(auto &usr : users) {
-        if(millis() - usr.lastActiveMs > ONLINE_TIMEOUT_MS) usr.online = false;
+    for(auto *usr : users) {
+        if(millis() - usr->lastActiveMs > ONLINE_TIMEOUT_MS) usr->online = false;
         if(!f) json += ",";
-        json += "{\"name\":\"" + usr.name + "\",\"av\":\"" + usr.avatar + "\",\"online\":" + (usr.online?"true":"false") + "}";
+        json += "{\"name\":\"" + usr->name + "\",\"av\":\"" + usr->avatar + "\",\"online\":" + (usr->online?"true":"false") + "}";
         f = false;
     }
     json += "],";
@@ -542,15 +547,15 @@ void setup() {
     // Msgs
     json += "\"msgs\":[";
     f = true;
-    for(const auto &m : messages) {
-        if(m.ts > last) {
+    for(const auto *m : messages) {
+        if(m->ts > last) {
             if(!f) json += ",";
             String av = "";
-            int uid = findUser(m.from);
-            if(uid >= 0) av = users[uid].avatar;
-            if(isAdmin(m.from, ADMIN_PASS)) av = "wolf"; // simplistic check
+            int uid = findUser(m->from);
+            if(uid >= 0) av = users[uid]->avatar;
+            if(isAdmin(m->from, ADMIN_PASS)) av = "wolf"; // simplistic check
             
-            json += "{\"from\":\"" + m.from + "\",\"txt\":\"" + m.text + "\",\"ts\":" + String(m.ts) + ",\"sys\":" + (m.isSystem?"true":"false") + ",\"avStr\":\"" + av + "\"}";
+            json += "{\"from\":\"" + m->from + "\",\"txt\":\"" + m->text + "\",\"ts\":" + String(m->ts) + ",\"sys\":" + (m->isSystem?"true":"false") + ",\"avStr\":\"" + av + "\"}";
             f = false;
         }
     }
@@ -580,7 +585,7 @@ void setup() {
       String json = "{\"users\":[";
       for(size_t i=0; i<users.size(); i++) {
           if(i>0) json += ",";
-          json += "{\"u\":\"" + users[i].name + "\",\"p\":\"" + users[i].pass + "\",\"ip\":\"" + users[i].ip + "\"}";
+          json += "{\"u\":\"" + users[i]->name + "\",\"p\":\"" + users[i]->pass + "\",\"ip\":\"" + users[i]->ip + "\"}";
       }
       json += "]}";
       request->send(200, "application/json", json);
@@ -591,6 +596,7 @@ void setup() {
       String t = request->arg("target");
       int idx = findUser(t);
       if(idx >= 0) {
+          delete users[idx];
           users.erase(users.begin() + idx);
           saveUsers();
       }
@@ -617,11 +623,11 @@ void setup() {
   
    server.on("/admin/announce", HTTP_POST, [](AsyncWebServerRequest *request){
       if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
-      Message m;
-      m.from = "SISTEM";
-      m.text = request->arg("txt");
-      m.isSystem = true;
-      m.ts = millis();
+      Message *m = new Message();
+      m->from = "SISTEM";
+      m->text = request->arg("txt");
+      m->isSystem = true;
+      m->ts = millis();
       messages.push_back(m);
       request->send(200, "application/json", "{}");
   });
