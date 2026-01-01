@@ -8,38 +8,36 @@
 
 // -------------------- Config --------------------
 // ASCII ONLY! No emoji, no Turkish chars.
-// Changed to SPIFFS for better ArduinoDroid compatibility.
-// Changed to Pointers in Vector to fix String copy error.
+// FIX: Using char arrays instead of String class to prevent STL/Allocator errors.
 
 const char* ADMIN_USER = "gusullu";
 const char* ADMIN_PASS = "omer3355";
 const char* ADMIN_AV = "wolf"; // entity &#128058;
 
-// Default AP
-String apSsid = "ESP32-Chat-v2";
+String apSsid = "ESP32-Chat-v3";
 String apPass = "12345678";
 
 AsyncWebServer server(80);
 
 // -------------------- Data Structures --------------------
+// Fixed size buffers to avoid dynamic allocation issues
 
 struct ChatUser {
-  String name;
-  String pass;
-  String ip;
-  String avatar; // fox, robot, alien, skull, cowboy, wolf
+  char name[32];
+  char pass[32];
+  char ip[24];
+  char avatar[16]; 
   bool online;
   unsigned long lastActiveMs;
 };
 
 struct Message {
-  String from;
-  String text;
+  char from[32];
+  char text[128];
   bool isSystem;
   unsigned long ts;
 };
 
-// Store Pointers to avoid String copy verification issues in ancient GCC
 std::vector<ChatUser*> users;
 std::vector<Message*> messages;
 
@@ -47,7 +45,13 @@ const unsigned long ONLINE_TIMEOUT_MS = 10000;
 
 // -------------------- Helpers --------------------
 
-// Load users from SPIFFS
+// Safe copy
+void safeCpy(char* dest, const char* src, size_t size) {
+  if(!src) { dest[0] = 0; return; }
+  strncpy(dest, src, size - 1);
+  dest[size - 1] = 0;
+}
+
 void loadUsers() {
   users.clear();
   if(!SPIFFS.exists("/users.json")) return;
@@ -61,17 +65,16 @@ void loadUsers() {
   JsonArray arr = doc.as<JsonArray>();
   for(JsonObject obj : arr) {
     ChatUser *u = new ChatUser();
-    u->name = obj["u"].as<String>();
-    u->pass = obj["p"].as<String>();
-    u->avatar = obj["av"].as<String>();
-    u->ip = obj["ip"].as<String>();
+    safeCpy(u->name, obj["u"] | "", sizeof(u->name));
+    safeCpy(u->pass, obj["p"] | "", sizeof(u->pass));
+    safeCpy(u->avatar, obj["av"] | "fox", sizeof(u->avatar));
+    safeCpy(u->ip, obj["ip"] | "-", sizeof(u->ip));
     u->online = false;
     u->lastActiveMs = 0;
     users.push_back(u);
   }
 }
 
-// Save users to SPIFFS
 void saveUsers() {
   DynamicJsonDocument doc(8192);
   JsonArray arr = doc.to<JsonArray>();
@@ -89,19 +92,18 @@ void saveUsers() {
   }
 }
 
-int findUser(const String &name) {
+int findUser(const char* name) {
   for(size_t i=0; i<users.size(); i++) {
-    if(users[i]->name == name) return (int)i;
+    if(strcmp(users[i]->name, name) == 0) return (int)i;
   }
   return -1;
 }
 
-bool isAdmin(const String &u, const String &p) {
-  return (u == ADMIN_USER && p == ADMIN_PASS);
+bool isAdmin(const char* u, const char* p) {
+  return (strcmp(u, ADMIN_USER) == 0 && strcmp(p, ADMIN_PASS) == 0);
 }
 
-// -------------------- HTML/JS (ASCII Only) --------------------
-// All text MUST be English/ASCII. Emojis as Entities.
+// -------------------- HTML --------------------
 
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -118,8 +120,6 @@ body { font-family: sans-serif; background: #e5ddd5; margin: 0; padding: 0; heig
 :root {
   --green: #25d366;
   --white: #ffffff;
-  --gray: #f0f0f0;
-  --blue: #34b7f1;
 }
 
 /* Screens */
@@ -140,7 +140,7 @@ button { background: var(--green); color: white; font-weight: bold; cursor: poin
 .header { background: #075e54; color: white; padding: 10px; display: flex; align-items: center; justify-content: space-between; }
 .chat-body { flex: 1; display: flex; overflow: hidden; }
 
-/* Sidebar (Users) */
+/* Sidebar */
 .user-list { width: 250px; background: white; border-right: 1px solid #ddd; overflow-y: auto; }
 .user-item { padding: 10px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; }
 .u-av { font-size: 24px; margin-right: 10px; }
@@ -149,7 +149,7 @@ button { background: var(--green); color: white; font-weight: bold; cursor: poin
 .u-status { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
 .u-status.online { background: var(--green); }
 
-/* Messages */
+/* Msgs */
 .msg-area { flex: 1; display: flex; flex-direction: column; position: relative; }
 .msgs { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
 .msg { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 14px; position: relative; word-wrap: break-word; }
@@ -170,7 +170,6 @@ button { background: var(--green); color: white; font-weight: bold; cursor: poin
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
 
-/* Responsive */
 @media(max-width: 600px) {
   .user-list { display: none; position: absolute; top: 50px; left: 0; height: calc(100% - 50px); z-index: 50; width: 200px; border-right: 2px solid #ddd;}
   .user-list.active { display: block; }
@@ -179,13 +178,12 @@ th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="loginScreen" class="screen active">
   <div class="login-box">
     <h2>Giris Yap</h2>
     <input id="lUser" placeholder="Kullanici Adi">
     <input id="lPass" type="password" placeholder="Sifre">
-    <div style="text-align:left; font-size:12px; margin-top:5px;">Avatar Sec:</div>
+    <div style="text-align:left; font-size:12px; margin-top:5px;">Avatar:</div>
     <div class="avatar-grid">
       <div class="av-btn selected" onclick="selAv('fox')">&#129418;</div>
       <div class="av-btn" onclick="selAv('robot')">&#129302;</div>
@@ -198,7 +196,6 @@ th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
   </div>
 </div>
 
-<!-- CHAT -->
 <div id="chatScreen" class="screen">
   <div class="header">
     <div style="display:flex; align-items:center gap:10px;">
@@ -223,7 +220,6 @@ th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
     </div>
   </div>
   
-  <!-- ADMIN PANEL -->
   <div id="adminPanel">
     <div class="adm-header">
       <span>Admin Paneli</span>
@@ -237,7 +233,6 @@ th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
         <input id="wSsid" placeholder="SSID">
         <input id="wPass" placeholder="Sifre">
         <button onclick="admConn()">Baglan</button>
-        <div id="wStat"></div>
       </div>
       <div class="adm-box">
         <h4>AP Ayarlari</h4>
@@ -265,11 +260,7 @@ th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
 let state = { u:"", p:"", av:"", admin:false };
 let lastMsgTime = 0;
 let selAvatar = "fox";
-
-const codemap = {
-  "fox": "&#129418;", "robot": "&#129302;", "alien": "&#128125;", 
-  "skull": "&#128128;", "cowboy": "&#129312;", "wolf": "&#128058;"
-};
+const codemap = { "fox": "&#129418;", "robot": "&#129302;", "alien": "&#128125;", "skull": "&#128128;", "cowboy": "&#129312;", "wolf": "&#128058;" };
 
 function selAv(name) {
   selAvatar = name;
@@ -281,24 +272,16 @@ function req(url, data, cb) {
   let fd = new FormData();
   if(state.u) { fd.append("u", state.u); fd.append("p", state.p); }
   for(let k in data) fd.append(k, data[k]);
-  fetch(url, { method:"POST", body:fd })
-    .then(r => r.json())
-    .then(cb)
-    .catch(e => console.log(e));
+  fetch(url, { method:"POST", body:fd }).then(r=>r.json()).then(cb).catch(e=>console.log(e));
 }
 
 function doLogin() {
   let u = document.getElementById("lUser").value.trim();
   let p = document.getElementById("lPass").value.trim();
   if(!u||!p) return alert("Bos birakma");
-  // Try Login
   req("/login", {user:u, pass:p}, res => {
-    if(res.ok) {
-      state = { u:u, p:p, av:res.av, admin:res.admin };
-      enterApp();
-    } else {
-      alert("Giris hatasi");
-    }
+    if(res.ok) { state = { u:u, p:p, av:res.av, admin:res.admin }; enterApp(); }
+    else alert("Giris hatasi");
   });
 }
 
@@ -307,97 +290,63 @@ function doRegister() {
   let p = document.getElementById("lPass").value.trim();
   if(!u||!p) return alert("Bos birakma");
   req("/register", {user:u, pass:p, av:selAvatar}, res => {
-    if(res.ok) {
-      alert("Kayit Basarili! Giris yapabilirsin.");
-    } else {
-      alert("Kayit hatasi: " + res.msg);
-    }
+    if(res.ok) alert("Kayit Basarili! Giris yapabilirsin.");
+    else alert("Hata: " + res.msg);
   });
 }
 
 function logout() { location.reload(); }
-
 function enterApp() {
   document.getElementById("loginScreen").classList.remove("active");
   document.getElementById("chatScreen").classList.add("active");
   document.getElementById("myAv").innerHTML = codemap[state.av] || "";
   if(state.admin) document.getElementById("admBtn").style.display = "inline-block";
-  
-  setInterval(poll, 2000);
-  poll();
+  setInterval(poll, 2000); poll();
 }
 
 function poll() {
   req("/updates", {last:lastMsgTime}, res => {
-    // Users
-    let ul = document.getElementById("uList");
-    ul.innerHTML = "";
+    let ul = document.getElementById("uList"); ul.innerHTML = "";
     res.users.forEach(u => {
-      let div = document.createElement("div");
-      div.className = "user-item";
+      let div = document.createElement("div"); div.className = "user-item";
       let code = codemap[u.av] || "?";
       let status = u.online ? "online" : "";
       div.innerHTML = `<span class="u-av">${code}</span> <div class="u-info"><div class="u-name">${u.name}</div></div> <div class="u-status ${status}"></div>`;
       ul.appendChild(div);
     });
     
-    // Messages
     let mb = document.getElementById("msgBox");
     let scroll = (mb.scrollTop + mb.clientHeight >= mb.scrollHeight - 20);
     res.msgs.forEach(m => {
       lastMsgTime = m.ts;
       let d = document.createElement("div");
-      if(m.sys) {
-        d.className = "msg sys";
-        d.innerText = m.txt;
-      } else {
+      if(m.sys) { d.className = "msg sys"; d.innerText = m.txt; } 
+      else {
         d.className = "msg " + (m.from === state.u ? "me" : "other");
-        let ent = codemap[m.avStr] || ""; // Server sends avatar string
+        let ent = codemap[m.avStr] || "";
         d.innerHTML = `<div class="sender-name">${ent} ${m.from}</div> ${m.txt}`;
       }
       mb.appendChild(d);
-      
-      // Popup
-      if(m.from !== state.u && !document.hasFocus()) {
-        // Simple notify logic
-      }
     });
-
     if(res.msgs.length > 0 && scroll) mb.scrollTop = mb.scrollHeight;
     
-    // Typing check
     document.getElementById("typing").innerText = res.typing ? res.typing + " yaziyor..." : "";
   });
 }
 
-let typeTimor = null;
-function onType() {
-  req("/typing", {}, r=>{});
-}
-
+function onType() { req("/typing", {}, r=>{}); }
 function sendMsg() {
-  let i = document.getElementById("msgInput");
-  let t = i.value.trim();
+  let i = document.getElementById("msgInput"); let t = i.value.trim();
   if(!t) return;
-  req("/send", {txt:t}, r => {
-    if(r.ok) {
-      i.value = "";
-      poll();
-    }
-  });
+  req("/send", {txt:t}, r => { if(r.ok) { i.value = ""; poll(); }});
 }
+function toggleUsers() { document.getElementById("uList").classList.toggle("active"); }
 
-function toggleUsers() {
-  document.getElementById("uList").classList.toggle("active");
-}
-
-/* ADMIN */
 function openAdmin() { document.getElementById("adminPanel").style.display="flex"; loadAdmUsers(); }
 function closeAdmin() { document.getElementById("adminPanel").style.display="none"; }
 function loadAdmUsers() {
   req("/admin/users", {}, r => {
-    let tb = document.getElementById("admUsers");
-    tb.innerHTML = "";
+    let tb = document.getElementById("admUsers"); tb.innerHTML = "";
     r.users.forEach(u => {
       let tr = document.createElement("tr");
       tr.innerHTML = `<td>${u.u}</td><td>${u.p}</td><td>${u.ip}</td><td><button onclick="banUser('${u.u}')" style="background:red;font-size:10px;">SIL</button></td>`;
@@ -405,26 +354,11 @@ function loadAdmUsers() {
     });
   });
 }
-function banUser(u) {
-  if(confirm("Silmek istedigine emin misin?")) {
-    req("/admin/ban", {target:u}, r => loadAdmUsers());
-  }
-}
-function admScan() {
-  req("/admin/scan", {}, r => {
-    let d = document.getElementById("scanRes");
-    d.innerHTML = r.nets.join(", ");
-  });
-}
-function admConn() {
-  req("/admin/connect", {s:document.getElementById("wSsid").value, p:document.getElementById("wPass").value}, r=>{alert("Baglaniyor...")});
-}
-function admAp() {
-  req("/admin/ap", {s:document.getElementById("apName").value, p:document.getElementById("apKey").value}, r=>{alert("Resetleniyor...")});
-}
-function admAnnounce() {
-  req("/admin/announce", {txt:document.getElementById("annText").value}, r=>{alert("Gonderildi");});
-}
+function banUser(u) { if(confirm("Sil?")) req("/admin/ban", {target:u}, r => loadAdmUsers()); }
+function admScan() { req("/admin/scan", {}, r => { document.getElementById("scanRes").innerHTML = r.nets.join(", "); }); }
+function admConn() { req("/admin/connect", {s:document.getElementById("wSsid").value, p:document.getElementById("wPass").value}, r=>{alert("Baglaniyor...")}); }
+function admAp() { req("/admin/ap", {s:document.getElementById("apName").value, p:document.getElementById("apKey").value}, r=>{alert("Resetleniyor...")}); }
+function admAnnounce() { req("/admin/announce", {txt:document.getElementById("annText").value}, r=>{alert("Gonderildi");}); }
 
 </script>
 </body>
@@ -439,36 +373,28 @@ unsigned long typeTime = 0;
 void setup() {
   Serial.begin(115200);
   
-  if(!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS Fail");
-  }
+  if(!SPIFFS.begin(true)) { Serial.println("SPIFFS Fail"); }
   loadUsers();
   
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(apSsid.c_str(), apPass.c_str());
 
   // Routes
-  
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", INDEX_HTML);
-  });
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){ request->send_P(200, "text/html", INDEX_HTML); });
   
   server.on("/login", HTTP_POST, [](AsyncWebServerRequest *request){
     String u = request->arg("user");
     String p = request->arg("pass");
-    bool admin = isAdmin(u, p);
-    
-    if(admin) {
+    if(isAdmin(u.c_str(), p.c_str())) {
         request->send(200, "application/json", "{\"ok\":true,\"admin\":true,\"av\":\"wolf\"}");
         return;
     }
-    
-    int idx = findUser(u);
-    if(idx >= 0 && users[idx]->pass == p) {
-        users[idx]->ip = request->client()->remoteIP().toString();
+    int idx = findUser(u.c_str());
+    if(idx >= 0 && strcmp(users[idx]->pass, p.c_str()) == 0) {
+        safeCpy(users[idx]->ip, request->client()->remoteIP().toString().c_str(), 24);
         users[idx]->online = true;
         users[idx]->lastActiveMs = millis();
-        String json = "{\"ok\":true,\"admin\":false,\"av\":\"" + users[idx]->avatar + "\"}";
+        String json = "{\"ok\":true,\"admin\":false,\"av\":\"" + String(users[idx]->avatar) + "\"}";
         request->send(200, "application/json", json);
     } else {
         request->send(200, "application/json", "{\"ok\":false}");
@@ -479,14 +405,16 @@ void setup() {
     String u = request->arg("user");
     String p = request->arg("pass");
     String av = request->arg("av");
-    
-    if(findUser(u) >= 0 || u == ADMIN_USER || u.length()<2) {
+    if(findUser(u.c_str()) >= 0 || u == ADMIN_USER || u.length()<2) {
       request->send(200, "application/json", "{\"ok\":false,\"msg\":\"Gecersiz\"}");
       return;
     }
-    
     ChatUser *nu = new ChatUser();
-    nu->name = u; nu->pass = p; nu->avatar = av; nu->online = false; nu->ip="-";
+    safeCpy(nu->name, u.c_str(), 32);
+    safeCpy(nu->pass, p.c_str(), 32);
+    safeCpy(nu->avatar, av.c_str(), 16);
+    safeCpy(nu->ip, "-", 24);
+    nu->online = false;
     users.push_back(nu);
     saveUsers();
     request->send(200, "application/json", "{\"ok\":true}");
@@ -497,24 +425,18 @@ void setup() {
     String p = request->arg("p");
     String t = request->arg("txt");
     
-    int idx = findUser(u);
-    bool admin = isAdmin(u, p);
+    int idx = findUser(u.c_str());
+    bool admin = isAdmin(u.c_str(), p.c_str());
     
-    if(admin || (idx >= 0 && users[idx]->pass == p)) {
+    if(admin || (idx >= 0 && strcmp(users[idx]->pass, p.c_str()) == 0)) {
         Message *m = new Message();
-        m->from = u;
-        m->text = t;
+        safeCpy(m->from, u.c_str(), 32);
+        safeCpy(m->text, t.c_str(), 128);
         m->isSystem = false;
         m->ts = millis();
         messages.push_back(m);
-        // prune old
-        if(messages.size() > 50) {
-            delete messages[0];
-            messages.erase(messages.begin());
-        }
-        
+        if(messages.size() > 50) { delete messages[0]; messages.erase(messages.begin()); }
         if(idx >= 0) { users[idx]->lastActiveMs = millis(); users[idx]->online = true; }
-        
         request->send(200, "application/json", "{\"ok\":true}");
     } else {
         request->send(200, "application/json", "{\"ok\":false}");
@@ -526,25 +448,20 @@ void setup() {
     String lastStr = request->arg("last");
     unsigned long last = lastStr.toInt();
     
-    // Update online
-    int idx = findUser(u);
+    int idx = findUser(u.c_str());
     if(idx >= 0) { users[idx]->lastActiveMs = millis(); users[idx]->online = true; }
     
-    // JSON build
     String json = "{";
-    
-    // Users
     json += "\"users\":[";
     bool f = true;
     for(auto *usr : users) {
         if(millis() - usr->lastActiveMs > ONLINE_TIMEOUT_MS) usr->online = false;
         if(!f) json += ",";
-        json += "{\"name\":\"" + usr->name + "\",\"av\":\"" + usr->avatar + "\",\"online\":" + (usr->online?"true":"false") + "}";
+        json += "{\"name\":\"" + String(usr->name) + "\",\"av\":\"" + String(usr->avatar) + "\",\"online\":" + (usr->online?"true":"false") + "}";
         f = false;
     }
     json += "],";
     
-    // Msgs
     json += "\"msgs\":[";
     f = true;
     for(const auto *m : messages) {
@@ -553,20 +470,15 @@ void setup() {
             String av = "";
             int uid = findUser(m->from);
             if(uid >= 0) av = users[uid]->avatar;
-            if(isAdmin(m->from, ADMIN_PASS)) av = "wolf"; // simplistic check
+            if(isAdmin(m->from, ADMIN_PASS)) av = "wolf"; 
             
-            json += "{\"from\":\"" + m->from + "\",\"txt\":\"" + m->text + "\",\"ts\":" + String(m->ts) + ",\"sys\":" + (m->isSystem?"true":"false") + ",\"avStr\":\"" + av + "\"}";
+            json += "{\"from\":\"" + String(m->from) + "\",\"txt\":\"" + String(m->text) + "\",\"ts\":" + String(m->ts) + ",\"sys\":" + (m->isSystem?"true":"false") + ",\"avStr\":\"" + av + "\"}";
             f = false;
         }
     }
     json += "],";
-    
-    // Typing
-    if(millis() - typeTime < 2000 && typist.length() > 0 && typist != u) {
-         json += "\"typing\":\"" + typist + "\"";
-    } else {
-         json += "\"typing\":\"\"";
-    }
+    if(millis() - typeTime < 2000 && typist.length() > 0 && typist != u) json += "\"typing\":\"" + typist + "\"";
+    else json += "\"typing\":\"\"";
     
     json += "}";
     request->send(200, "application/json", json);
@@ -578,33 +490,26 @@ void setup() {
      request->send(200, "application/json", "{}");
   });
   
-  // ADMIN ROUTES
   server.on("/admin/users", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
-      
+      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
       String json = "{\"users\":[";
       for(size_t i=0; i<users.size(); i++) {
           if(i>0) json += ",";
-          json += "{\"u\":\"" + users[i]->name + "\",\"p\":\"" + users[i]->pass + "\",\"ip\":\"" + users[i]->ip + "\"}";
+          json += "{\"u\":\"" + String(users[i]->name) + "\",\"p\":\"" + String(users[i]->pass) + "\",\"ip\":\"" + String(users[i]->ip) + "\"}";
       }
       json += "]}";
       request->send(200, "application/json", json);
   });
   
   server.on("/admin/ban", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
-      String t = request->arg("target");
-      int idx = findUser(t);
-      if(idx >= 0) {
-          delete users[idx];
-          users.erase(users.begin() + idx);
-          saveUsers();
-      }
+      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
+      int idx = findUser(request->arg("target").c_str());
+      if(idx >= 0) { delete users[idx]; users.erase(users.begin() + idx); saveUsers(); }
       request->send(200, "application/json", "{}");
   });
   
    server.on("/admin/scan", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
+      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
       int n = WiFi.scanNetworks();
       String json = "{\"nets\":[";
       for(int i=0; i<n; i++) {
@@ -616,16 +521,16 @@ void setup() {
   });
   
   server.on("/admin/connect", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
+      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
       WiFi.begin(request->arg("s").c_str(), request->arg("p").c_str());
       request->send(200, "application/json", "{}");
   });
   
    server.on("/admin/announce", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
+      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
       Message *m = new Message();
-      m->from = "SISTEM";
-      m->text = request->arg("txt");
+      safeCpy(m->from, "SISTEM", 32);
+      safeCpy(m->text, request->arg("txt").c_str(), 128);
       m->isSystem = true;
       m->ts = millis();
       messages.push_back(m);
@@ -633,10 +538,7 @@ void setup() {
   });
   
    server.on("/admin/ap", HTTP_POST, [](AsyncWebServerRequest *request){
-      if(!isAdmin(request->arg("u"), request->arg("p"))) return request->send(200, "{}", "{}");
-      // Ideally save to preds, but for now just hardcode in next boot? 
-      // User asked to change. We can simulate or use prefs.
-      // Assuming prefs logic was removed for single file simplicity above, but let's just reboot.
+      if(!isAdmin(request->arg("u").c_str(), request->arg("p").c_str())) return request->send(200, "{}", "{}");
       request->send(200, "application/json", "{}");
       delay(500);
       ESP.restart();
@@ -645,6 +547,4 @@ void setup() {
   server.begin();
 }
 
-void loop() {
-  // Async server does not need loop handling
-}
+void loop() {}
